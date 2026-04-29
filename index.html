@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Can't Stop The Feeling - Interactive Listening</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        /* Topbar fissa in alto */
+        .topbar {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .controls button {
+            background-color: #1abc9c;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-right: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .controls button:hover {
+            background-color: #16a085;
+        }
+        .phase-selector button {
+            background-color: #34495e;
+            color: white;
+            border: 1px solid #fff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .phase-selector button.active {
+            background-color: #f39c12;
+            border-color: #f39c12;
+        }
+        /* Contenitore principale */
+        .content {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            line-height: 2;
+            font-size: 20px;
+        }
+        .instructions {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-left: 5px solid #3498db;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        /* Stile per l'esercizio */
+        .lyric-line {
+            margin-bottom: 10px;
+        }
+        select {
+            padding: 5px;
+            font-size: 18px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            outline: none;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+        .correct {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+        .incorrect {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+        /* Nascondiamo il video di YouTube perché ci serve solo l'audio */
+        #player {
+            display: none; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="controls">
+            <button id="playBtn" onclick="togglePlay()">▶️ Play Audio</button>
+            <span id="status">In attesa...</span>
+        </div>
+        <div class="phase-selector">
+            <button id="btnPhase1" class="active" onclick="setPhase(1)">Fase 1: Ascolto</button>
+            <button id="btnPhase2" onclick="setPhase(2)">Fase 2: Esercizio</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div id="instructions" class="instructions">
+            <strong>Fase 1:</strong> Ascolta la canzone e leggi il testo completo per familiarizzare con le parole.
+        </div>
+        <div id="lyrics-container"></div>
+    </div>
+
+    <div id="player"></div>
+
+    <script>
+        // Il testo estratto dal file SRT
+        const lyricsData = [
+            { text: "I got this ", gap: "feeling", options: ["feeling", "thinking", "dancing"], after: " inside my bones" },
+            { text: "It goes ", gap: "electric", options: ["magic", "electric", "static"], after: " wavy when I turn it on" },
+            { text: "All through my city All through my home" },
+            { text: "We're flying up those ceilings when we're in our zone" },
+            { text: "I got that ", gap: "sunshine", options: ["money", "sunshine", "ticket"], after: " in my pocket" },
+            { text: "Got that good song in my feet" },
+            { text: "I feel that hot blood in my body" },
+            { text: "When it drops, ooh" },
+            { text: "I can take my eyes above it" },
+            { text: "Moving so phenomenally" },
+            { text: "You gon' like the way we walk it" },
+            { text: "So don't stop and under the light" },
+            { text: "I can't see but you when you ", gap: "dance", options: ["sing", "sleep", "dance"], after: ", dance, dance" }
+        ];
+
+        let currentPhase = 1;
+        let player;
+        let isPlaying = false;
+
+        // 1. Caricamento asincrono delle API di YouTube
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        // 2. Inizializzazione del player quando l'API è pronta
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('player', {
+                height: '0',
+                width: '0',
+                videoId: 'pKkJ2O_9LH4', // L'ID del video fornito
+                playerVars: {
+                    'playsinline': 1,
+                    'controls': 0
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        function onPlayerReady(event) {
+            document.getElementById('status').innerText = "Audio Pronto!";
+            renderLyrics();
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data == YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                document.getElementById('playBtn').innerText = "⏸ Pause Audio";
+                document.getElementById('status').innerText = "In riproduzione...";
+            } else {
+                isPlaying = false;
+                document.getElementById('playBtn').innerText = "▶️ Play Audio";
+                document.getElementById('status').innerText = "In pausa";
+            }
+        }
+
+        function togglePlay() {
+            if (!player || !player.playVideo) return;
+            if (isPlaying) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+        }
+
+        // 3. Gestione delle Fasi dell'app
+        function setPhase(phase) {
+            currentPhase = phase;
+            
+            // Aggiorna la UI dei bottoni
+            document.getElementById('btnPhase1').classList.remove('active');
+            document.getElementById('btnPhase2').classList.remove('active');
+            document.getElementById('btnPhase' + phase).classList.add('active');
+
+            // Aggiorna le istruzioni
+            const instructions = document.getElementById('instructions');
+            if (phase === 1) {
+                instructions.innerHTML = "<strong>Fase 1:</strong> Ascolta la canzone e leggi il testo completo per familiarizzare con le parole.";
+            } else {
+                instructions.innerHTML = "<strong>Fase 2:</strong> Clicca sul menu a tendina e scegli la parola corretta. Se sbagli la canzone si metterà in pausa, se indovini continuerà!";
+                // Opzionale: riavvia la canzone dall'inizio per la fase 2
+                if(player && player.seekTo) {
+                    player.seekTo(0);
+                    player.playVideo();
+                }
+            }
+
+            renderLyrics();
+        }
+
+        // 4. Renderizzazione del testo in base alla fase
+        function renderLyrics() {
+            const container = document.getElementById('lyrics-container');
+            container.innerHTML = '';
+
+            lyricsData.forEach((line, index) => {
+                const div = document.createElement('div');
+                div.className = 'lyric-line';
+
+                if (currentPhase === 1 || !line.gap) {
+                    // Fase 1 o riga senza buchi: mostra il testo intero
+                    let fullText = line.text;
+                    if (line.gap) fullText += line.gap + line.after;
+                    div.innerText = fullText;
+                } else {
+                    // Fase 2: mostra i Select per le parole mancanti
+                    div.appendChild(document.createTextNode(line.text));
+                    
+                    const select = document.createElement('select');
+                    select.id = 'gap_' + index;
+                    
+                    // Opzione di default vuota
+                    const defaultOption = document.createElement('option');
+                    defaultOption.text = "---";
+                    defaultOption.value = "";
+                    select.appendChild(defaultOption);
+
+                    // Aggiungi le opzioni mescolate (se non sono già mescolate, qui sono fisse)
+                    line.options.forEach(opt => {
+                        const option = document.createElement('option');
+                        option.value = opt;
+                        option.text = opt;
+                        select.appendChild(option);
+                    });
+
+                    // Evento quando lo studente seleziona una risposta
+                    select.addEventListener('change', function() {
+                        checkAnswer(this, line.gap);
+                    });
+
+                    div.appendChild(select);
+                    div.appendChild(document.createTextNode(line.after));
+                }
+
+                container.appendChild(div);
+            });
+        }
+
+        // 5. Logica di validazione e feedback immediato
+        function checkAnswer(selectElement, correctAnswer) {
+            // Rimuovi classi precedenti
+            selectElement.classList.remove('correct', 'incorrect');
+
+            if (selectElement.value === correctAnswer) {
+                // Risposta Corretta
+                selectElement.classList.add('correct');
+                selectElement.disabled = true; // Blocca la selezione una volta corretta
+                
+                // Fa continuare la canzone come richiesto
+                if (player && player.playVideo) {
+                    player.playVideo();
+                }
+            } else if (selectElement.value !== "") {
+                // Risposta Errata
+                selectElement.classList.add('incorrect');
+                
+                // Pausa la canzone come feedback per riprovare
+                if (player && player.pauseVideo) {
+                    player.pauseVideo();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

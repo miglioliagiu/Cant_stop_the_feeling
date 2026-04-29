@@ -123,7 +123,7 @@
     <div id="player"></div>
 
     <script>
-        // Il testo estratto dal file SRT
+        // Il testo completo estratto dal file SRT
         const lyricsData = [
             { text: "I got this ", gap: "feeling", options: ["feeling", "thinking", "dancing"], after: " inside my bones" },
             { text: "It goes ", gap: "electric", options: ["magic", "electric", "static"], after: " wavy when I turn it on" },
@@ -131,31 +131,38 @@
             { text: "We're flying up those ceilings when we're in our zone" },
             { text: "I got that ", gap: "sunshine", options: ["money", "sunshine", "ticket"], after: " in my pocket" },
             { text: "Got that good song in my feet" },
-            { text: "I feel that hot blood in my body" },
+            { text: "I feel that hot blood in my ", gap: "body", options: ["head", "body", "hands"], after: "" },
             { text: "When it drops, ooh" },
             { text: "I can take my eyes above it" },
-            { text: "Moving so phenomenally" },
+            { text: "Moving so ", gap: "phenomenally", options: ["slowly", "quickly", "phenomenally"], after: "" },
             { text: "You gon' like the way we walk it" },
-            { text: "So don't stop and under the light" },
-            { text: "I can't see but you when you ", gap: "dance", options: ["sing", "sleep", "dance"], after: ", dance, dance" }
+            { text: "So don't stop and under the ", gap: "light", options: ["sun", "light", "stars"], after: "" },
+            { text: "I can't see but you when you dance, dance, dance" },
+            { text: "I've been up on you, so just ", gap: "dance", options: ["sing", "sleep", "dance"], after: ", dance, dance" },
+            { text: "All those things I shouldn't do, but you dance, dance" },
+            { text: "Ain't nobody ", gap: "leaving", options: ["coming", "leaving", "crying"], after: " soon, so keep dancing" },
+            { text: "Just dance, dance, dance" },
+            { text: "Just dance, dance, dance" },
+            { text: "But you and your dance ", gap: "music", options: ["music", "partner", "shoes"], after: "" },
+            { text: "Just dance, Dance, dance" },
+            { text: "Just dance, Dance, danc-dance" },
+            { text: "Just dance, D-a-nce, dance" }
         ];
 
         let currentPhase = 1;
         let player;
         let isPlaying = false;
 
-        // 1. Caricamento asincrono delle API di YouTube
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         var firstScriptTag = document.getElementsByTagName('script')[0];
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
-        // 2. Inizializzazione del player quando l'API è pronta
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
                 height: '0',
                 width: '0',
-                videoId: 'pKkJ2O_9LH4', // L'ID del video fornito
+                videoId: 'pKkJ2O_9LH4', 
                 playerVars: {
                     'playsinline': 1,
                     'controls': 0
@@ -193,22 +200,18 @@
             }
         }
 
-        // 3. Gestione delle Fasi dell'app
         function setPhase(phase) {
             currentPhase = phase;
             
-            // Aggiorna la UI dei bottoni
             document.getElementById('btnPhase1').classList.remove('active');
             document.getElementById('btnPhase2').classList.remove('active');
             document.getElementById('btnPhase' + phase).classList.add('active');
 
-            // Aggiorna le istruzioni
             const instructions = document.getElementById('instructions');
             if (phase === 1) {
                 instructions.innerHTML = "<strong>Fase 1:</strong> Ascolta la canzone e leggi il testo completo per familiarizzare con le parole.";
             } else {
                 instructions.innerHTML = "<strong>Fase 2:</strong> Clicca sul menu a tendina e scegli la parola corretta. Se sbagli la canzone si metterà in pausa, se indovini continuerà!";
-                // Opzionale: riavvia la canzone dall'inizio per la fase 2
                 if(player && player.seekTo) {
                     player.seekTo(0);
                     player.playVideo();
@@ -218,7 +221,6 @@
             renderLyrics();
         }
 
-        // 4. Renderizzazione del testo in base alla fase
         function renderLyrics() {
             const container = document.getElementById('lyrics-container');
             container.innerHTML = '';
@@ -228,24 +230,20 @@
                 div.className = 'lyric-line';
 
                 if (currentPhase === 1 || !line.gap) {
-                    // Fase 1 o riga senza buchi: mostra il testo intero
                     let fullText = line.text;
                     if (line.gap) fullText += line.gap + line.after;
                     div.innerText = fullText;
                 } else {
-                    // Fase 2: mostra i Select per le parole mancanti
                     div.appendChild(document.createTextNode(line.text));
                     
                     const select = document.createElement('select');
                     select.id = 'gap_' + index;
                     
-                    // Opzione di default vuota
                     const defaultOption = document.createElement('option');
                     defaultOption.text = "---";
                     defaultOption.value = "";
                     select.appendChild(defaultOption);
 
-                    // Aggiungi le opzioni mescolate (se non sono già mescolate, qui sono fisse)
                     line.options.forEach(opt => {
                         const option = document.createElement('option');
                         option.value = opt;
@@ -253,7 +251,6 @@
                         select.appendChild(option);
                     });
 
-                    // Evento quando lo studente seleziona una risposta
                     select.addEventListener('change', function() {
                         checkAnswer(this, line.gap);
                     });
@@ -266,25 +263,19 @@
             });
         }
 
-        // 5. Logica di validazione e feedback immediato
         function checkAnswer(selectElement, correctAnswer) {
-            // Rimuovi classi precedenti
             selectElement.classList.remove('correct', 'incorrect');
 
             if (selectElement.value === correctAnswer) {
-                // Risposta Corretta
                 selectElement.classList.add('correct');
-                selectElement.disabled = true; // Blocca la selezione una volta corretta
+                selectElement.disabled = true; 
                 
-                // Fa continuare la canzone come richiesto
                 if (player && player.playVideo) {
                     player.playVideo();
                 }
             } else if (selectElement.value !== "") {
-                // Risposta Errata
                 selectElement.classList.add('incorrect');
                 
-                // Pausa la canzone come feedback per riprovare
                 if (player && player.pauseVideo) {
                     player.pauseVideo();
                 }
